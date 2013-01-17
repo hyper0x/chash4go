@@ -33,7 +33,7 @@ type HashRing interface {
 }
 
 type SimpleHashRing struct {
-	nodeRing         NodeRing
+	nodeRing         *NodeRing
 	targetMap        map[string]NodeKeySet
 	pendingTargetMap map[string]NodeKeySet
 	changeSign       *go_lib.RWSign
@@ -43,7 +43,7 @@ type SimpleHashRing struct {
 }
 
 func (self *SimpleHashRing) initialize() {
-	self.nodeRing = make(NodeRing, 0)
+	self.nodeRing = &NodeRing{}
 	self.targetMap = make(map[string]NodeKeySet, 0)
 	self.pendingTargetMap = make(map[string]NodeKeySet, 0)
 	self.changeSign = go_lib.NewRWSign()
@@ -119,17 +119,17 @@ func (self *SimpleHashRing) Check(nodeCheckFunc NodeCheckFunc) error {
 	}()
 	for target, nodeKeySet := range self.targetMap {
 		if !nodeCheckFunc(target) {
-			if self.removeNodeByKeys(self.nodeRing, nodeKeySet...) {
+			if self.removeNodeByKeys(self.nodeRing, nodeKeySet) {
 				self.pendingTargetMap[target] = nodeKeySet
-				self.targetMap[target] = nil
+				self.targetMap[target] = NodeKeySet{}
 			}
 		}
 	}
 	for target, nodeKeySet := range self.pendingTargetMap {
 		if nodeCheckFunc(target) {
-			if self.addNodesOfTarget(self.nodeRing, target, nodeKeySet...) {
+			if self.addNodesOfTarget(self.nodeRing, target, nodeKeySet) {
 				self.targetMap[target] = nodeKeySet
-				self.pendingTargetMap[target] = nil
+				self.pendingTargetMap[target] = NodeKeySet{}
 			}
 		}
 	}
@@ -186,9 +186,7 @@ func (self *SimpleHashRing) InChecking() bool {
 }
 
 func (self *SimpleHashRing) AddTarget(target string) error {
-	self.changeSign.Set()
 	defer func() {
-		self.changeSign.Unset()
 		if err := recover(); err != nil {
 			errorMsg := fmt.Sprintf("Occur FATAL error when add target: %s", err)
 			go_lib.LogFatalln(errorMsg)
@@ -213,14 +211,12 @@ func (self *SimpleHashRing) AddTarget(target string) error {
 		}
 	}
 	self.addNodes(self.nodeRing, nodeAll...)
-	self.putToTargetMap(true, target, nodeKeyAll...)
+	self.targetMap[target] = NodeKeySet{nodeKeyAll}
 	return nil
 }
 
 func (self *SimpleHashRing) RemoveTarget(target string) error {
-	self.changeSign.Set()
 	defer func() {
-		self.changeSign.Unset()
 		if err := recover(); err != nil {
 			errorMsg := fmt.Sprintf("Occur FATAL error when remove target: %s", err)
 			go_lib.LogFatalln(errorMsg)
@@ -228,13 +224,12 @@ func (self *SimpleHashRing) RemoveTarget(target string) error {
 		}
 	}()
 	nodeKeys := self.targetMap[target]
-	if nodeKeys == nil || len(nodeKeys) == 0 {
+	if nodeKeys.Len() == 0 {
 		return nil
 	}
-	self.removeNodeByKeys(self.nodeRing, nodeKeys...)
-	self.targetMap[target] = nil
-	self.pendingTargetMap[target] = nil
+	self.removeNodeByKeys(self.nodeRing, nodeKeys)
 	delete(self.targetMap, target)
+	delete(self.pendingTargetMap, target)
 	return nil
 }
 
@@ -256,36 +251,28 @@ func (self *SimpleHashRing) GetTarget(key string) (string, error) {
 	return matchedNode.Target, nil
 }
 
-func (self *SimpleHashRing) addNodes(nodeRing NodeRing, nodes ...Node) bool {
+func (self *SimpleHashRing) addNodes(nodeRing *NodeRing, nodes ...Node) bool {
+	self.changeSign.Set()
+	defer self.changeSign.Unset()
 	return nodeRing.Add(nodes...)
 }
 
-func (self *SimpleHashRing) addNodesOfTarget(nodeRing NodeRing, target string, nodeKeys ...uint32) bool {
-	nodes := make([]Node, len(nodeKeys))
-	for i, nodeKey := range nodeKeys {
+func (self *SimpleHashRing) addNodesOfTarget(nodeRing *NodeRing, target string, nodeKeys NodeKeySet) bool {
+	self.changeSign.Set()
+	defer self.changeSign.Unset()
+	nodes := make([]Node, nodeKeys.Len())
+	for i, nodeKey := range nodeKeys.GetAll() {
 		nodes[i] = Node{nodeKey, target}
 	}
 	return nodeRing.Add(nodes...)
 }
 
-func (self *SimpleHashRing) removeNodeByKeys(nodeRing NodeRing, nodeKeys ...uint32) bool {
+func (self *SimpleHashRing) removeNodeByKeys(nodeRing *NodeRing, nodeKeys NodeKeySet) bool {
 	self.changeSign.Set()
 	defer self.changeSign.Unset()
 	result := true
-	for _, nodeKey := range nodeKeys {
+	for _, nodeKey := range nodeKeys.GetAll() {
 		result = nodeRing.Remove(nodeKey) && result
 	}
 	return result
-}
-
-func (self *SimpleHashRing) putToTargetMap(overwrite bool, target string, nodeKeys ...uint32) bool {
-	currentNodeKeys := self.targetMap[target]
-	if currentNodeKeys != nil && !overwrite {
-		result := currentNodeKeys.Add(nodeKeys...)
-		self.targetMap[target] = currentNodeKeys
-		return result
-	} else {
-		self.targetMap[target] = NodeKeySet(nodeKeys)
-	}
-	return true
 }
