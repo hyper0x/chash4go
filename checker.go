@@ -20,7 +20,7 @@ type CycleChecker struct {
 	count           uint64
 }
 
-func (self CycleChecker) Start(checkFunc CheckFunc) bool {
+func (self *CycleChecker) Start(checkFunc CheckFunc) bool {
 	if self.checkingTag {
 		go_lib.LogWarnln("Please stop before restart.")
 		return false
@@ -28,7 +28,7 @@ func (self CycleChecker) Start(checkFunc CheckFunc) bool {
 	if self.IntervalSeconds == 0 {
 		self.IntervalSeconds = 2
 	}
-	self.stopSign = make(chan bool)
+	self.stopSign = make(chan bool, 1)
 	self.count = 0
 	tick := time.Tick(time.Duration(self.IntervalSeconds) * time.Second)
 	go func() {
@@ -47,13 +47,13 @@ func (self CycleChecker) Start(checkFunc CheckFunc) bool {
 	return true
 }
 
-func (self CycleChecker) Stop() bool {
+func (self *CycleChecker) Stop() bool {
 	if !self.checkingTag {
 		go_lib.LogWarnln("The checker were not started.")
 		return false
 	}
-	self.stopSign <- true
 	self.checkingTag = false
+	self.stopSign <- true
 	return true
 }
 
