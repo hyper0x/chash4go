@@ -61,10 +61,19 @@ func (self *NodeRing) Next(nodeKey uint32) *Node {
 	}
 	index := sort.Search(length, func(i int) bool { return self.nodes[i].Key >= nodeKey })
 	var matchedNode Node
-	if index >= length {
+	switch {
+	case index >= length:
 		matchedNode = self.nodes[0]
-	} else {
+	case index == (length - 1):
 		matchedNode = self.nodes[index]
+		if matchedNode.Key == nodeKey {
+			matchedNode = self.nodes[0]
+		}
+	default:
+		matchedNode = self.nodes[index]
+		if matchedNode.Key == nodeKey {
+			matchedNode = self.nodes[index+1]
+		}
 	}
 	return &Node{matchedNode.Key, matchedNode.Target}
 }
@@ -105,78 +114,15 @@ func (self *NodeRing) Remove(nodeKey uint32) bool {
 	if length == 0 {
 		return false
 	}
-	index := sort.Search(length, func(i int) bool { return self.nodes[i].Key == nodeKey })
+	index := sort.Search(length, func(i int) bool { return self.nodes[i].Key >= nodeKey })
 	if index < length {
+		if self.nodes[index].Key != nodeKey {
+			return false
+		}
 		copy(self.nodes[index:], self.nodes[index+1:])
 		// self.nodes[length-1] = Node{}
 		self.nodes = self.nodes[:length-1]
 		return true
 	}
 	return false
-}
-
-/* 
- * A non-thread-safe inserting-order set
- */
-type NodeKeySet struct {
-	keys []uint32
-}
-
-func (self *NodeKeySet) Len() int {
-	return len(self.keys)
-}
-
-func (self *NodeKeySet) IndexOf(nodeKey uint32) int {
-	index := sort.Search(len(self.keys), func(i int) bool { return self.keys[i] == nodeKey })
-	if index >= len(self.keys) {
-		return -1
-	}
-	return index
-}
-
-func (self *NodeKeySet) GetAll() []uint32 {
-	result := make([]uint32, len(self.keys))
-	copy(result, self.keys)
-	return result
-}
-
-func (self *NodeKeySet) Add(nodeKeys ...uint32) bool {
-	paramLength := len(nodeKeys)
-	if paramLength == 0 {
-		return false
-	}
-	selfLength := len(self.keys)
-	if selfLength == 0 {
-		self.keys = append(self.keys, nodeKeys...)
-		return true
-	}
-	newNodeKeys := make([]uint32, paramLength)
-	newNodeKeyIndex := 0
-	for i := 0; i < paramLength; i++ {
-		nodeKey := nodeKeys[i]
-		if self.IndexOf(nodeKey) < 0 {
-			newNodeKeys[newNodeKeyIndex] = nodeKey
-			newNodeKeyIndex++
-		}
-	}
-	if newNodeKeyIndex == 0 {
-		return false
-	}
-	newNodeKeys = newNodeKeys[:newNodeKeyIndex]
-	self.keys = append(self.keys, newNodeKeys...)
-	return true
-}
-
-func (self *NodeKeySet) Remove(nodeKey uint32) bool {
-	if len(self.keys) == 0 {
-		return false
-	}
-	index := self.IndexOf(nodeKey)
-	if index < 0 {
-		return false
-	}
-	copy(self.keys[index:], self.keys[index+1:])
-	// self.keys[length-1] = 0
-	self.keys = self.keys[:len(self.keys)-1]
-	return true
 }

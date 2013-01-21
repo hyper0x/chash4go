@@ -34,8 +34,8 @@ type HashRing interface {
 
 type SimpleHashRing struct {
 	nodeRing         *NodeRing
-	targetMap        map[string]NodeKeySet
-	pendingTargetMap map[string]NodeKeySet
+	targetMap        map[string][]uint32
+	pendingTargetMap map[string][]uint32
 	changeSign       *go_lib.RWSign
 	shadowNumber     uint16
 	checker          Checker
@@ -44,8 +44,8 @@ type SimpleHashRing struct {
 
 func (self *SimpleHashRing) initialize() {
 	self.nodeRing = &NodeRing{}
-	self.targetMap = make(map[string]NodeKeySet, 0)
-	self.pendingTargetMap = make(map[string]NodeKeySet, 0)
+	self.targetMap = make(map[string][]uint32, 0)
+	self.pendingTargetMap = make(map[string][]uint32, 0)
 	self.changeSign = go_lib.NewRWSign()
 	self.shadowNumber = uint16(1000)
 	self.status = INITIALIZED
@@ -117,19 +117,19 @@ func (self *SimpleHashRing) Check(nodeCheckFunc NodeCheckFunc) error {
 			debug.PrintStack()
 		}
 	}()
-	for target, nodeKeySet := range self.targetMap {
+	for target, nodeKeys := range self.targetMap {
 		if !nodeCheckFunc(target) {
-			if self.removeNodeByKeys(self.nodeRing, nodeKeySet) {
-				self.pendingTargetMap[target] = nodeKeySet
-				self.targetMap[target] = NodeKeySet{}
+			if self.removeNodeByKeys(self.nodeRing, nodeKeys) {
+				self.pendingTargetMap[target] = nodeKeys
+				self.targetMap[target] = nil
 			}
 		}
 	}
-	for target, nodeKeySet := range self.pendingTargetMap {
+	for target, nodeKeys := range self.pendingTargetMap {
 		if nodeCheckFunc(target) {
-			if self.addNodesOfTarget(self.nodeRing, target, nodeKeySet) {
-				self.targetMap[target] = nodeKeySet
-				self.pendingTargetMap[target] = NodeKeySet{}
+			if self.addNodesOfTarget(self.nodeRing, target, nodeKeys) {
+				self.targetMap[target] = nodeKeys
+				self.pendingTargetMap[target] = nil
 			}
 		}
 	}
@@ -211,7 +211,7 @@ func (self *SimpleHashRing) AddTarget(target string) error {
 		}
 	}
 	self.addNodes(self.nodeRing, nodeAll...)
-	self.targetMap[target] = NodeKeySet{nodeKeyAll}
+	self.targetMap[target] = nodeKeyAll
 	return nil
 }
 
@@ -224,7 +224,7 @@ func (self *SimpleHashRing) RemoveTarget(target string) error {
 		}
 	}()
 	nodeKeys := self.targetMap[target]
-	if nodeKeys.Len() == 0 {
+	if nodeKeys == nil || len(nodeKeys) == 0 {
 		return nil
 	}
 	self.removeNodeByKeys(self.nodeRing, nodeKeys)
@@ -257,21 +257,21 @@ func (self *SimpleHashRing) addNodes(nodeRing *NodeRing, nodes ...Node) bool {
 	return nodeRing.Add(nodes...)
 }
 
-func (self *SimpleHashRing) addNodesOfTarget(nodeRing *NodeRing, target string, nodeKeys NodeKeySet) bool {
+func (self *SimpleHashRing) addNodesOfTarget(nodeRing *NodeRing, target string, nodeKeys []uint32) bool {
 	self.changeSign.Set()
 	defer self.changeSign.Unset()
-	nodes := make([]Node, nodeKeys.Len())
-	for i, nodeKey := range nodeKeys.GetAll() {
+	nodes := make([]Node, len(nodeKeys))
+	for i, nodeKey := range nodeKeys {
 		nodes[i] = Node{nodeKey, target}
 	}
 	return nodeRing.Add(nodes...)
 }
 
-func (self *SimpleHashRing) removeNodeByKeys(nodeRing *NodeRing, nodeKeys NodeKeySet) bool {
+func (self *SimpleHashRing) removeNodeByKeys(nodeRing *NodeRing, nodeKeys []uint32) bool {
 	self.changeSign.Set()
 	defer self.changeSign.Unset()
 	result := true
-	for _, nodeKey := range nodeKeys.GetAll() {
+	for _, nodeKey := range nodeKeys {
 		result = nodeRing.Remove(nodeKey) && result
 	}
 	return result
