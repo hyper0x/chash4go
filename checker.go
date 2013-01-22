@@ -57,10 +57,10 @@ func (self *CycleChecker) Stop() bool {
 	return true
 }
 
-func (self CycleChecker) InChecking() bool {
+func (self *CycleChecker) InChecking() bool {
 	return self.checkingTag
 }
 
 func NewChecker(intervalSeconds uint16) Checker {
-	return interface{}(CycleChecker{IntervalSeconds: intervalSeconds}).(Checker)
+	return interface{}(&CycleChecker{IntervalSeconds: intervalSeconds}).(Checker)
 }

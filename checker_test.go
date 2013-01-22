@@ -27,6 +27,7 @@ func TestCycleChecker(t *testing.T) {
 				t.Logf("Stop the cheker...")
 				checker.Stop()
 				continueSign <- true
+				break
 			}
 		}
 	}()
