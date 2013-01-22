@@ -16,24 +16,25 @@ func GetHashBytes(content string) []byte {
 	return bytes
 }
 
-func GetKetamaNumbers(content string) []uint32 {
-	digest := GetHashBytes(content)
-	numbers := make([]uint32, 0)
-	for i := 0; i < KETAMA_NUMBERS_LENGTH; i++ {
-		n := ((digest[3+i*4] & 0xFF) << 24) |
-			((digest[2+i*4] & 0xFF) << 16) |
-			((digest[1+i*4] & 0xFF) << 8) |
-			(digest[i*4] & 0xFF)
-		numbers = append(numbers, uint32(n))
+func GetKetamaNumbers(content string) []uint64 {
+	bytes := GetHashBytes(content)
+	numbers := make([]uint64, len(bytes))
+	for i, b := range bytes {
+		numbers[i] = uint64(b)
 	}
-	return numbers
+	ketamaNumbers := make([]uint64, 0)
+	for i := 0; i < KETAMA_NUMBERS_LENGTH; i++ {
+		n := (numbers[3+i*4]&0xFF)<<24 | (numbers[2+i*4]&0xFF)<<16 | (numbers[1+i*4]&0xFF)<<8 | numbers[i*4]&0xFF
+		ketamaNumbers = append(ketamaNumbers, n)
+	}
+	return ketamaNumbers
 }
 
-func GetHashForKey(content string) uint32 {
+func GetHashForKey(content string) uint64 {
 	hashNumbers := GetKetamaNumbers(content)
-	var hash uint32
+	var hash uint64
 	for _, n := range hashNumbers {
 		hash += n
 	}
-	return hash / uint32(len(hashNumbers))
+	return hash / uint64(len(hashNumbers))
 }
