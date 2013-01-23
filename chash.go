@@ -27,8 +27,8 @@ type HashRing interface {
 	StartCheck(nodeCheckFunc NodeCheckFunc, intervalSeconds uint16) (bool, error)
 	StopCheck() (bool, error)
 	InChecking() bool
-	AddTargets(targets ...string) error
-	RemoveTargets(targets ...string) error
+	AddTarget(target string) error
+	RemoveTarget(target string) error
 	GetTarget(key string) (string, error)
 }
 
