@@ -20,6 +20,7 @@ func TestSimpleHashRing(t *testing.T) {
 		t.Errorf("Build hash ring Error: %s", err)
 		t.FailNow()
 	}
+	t.Logf("The hash ring is builded.")
 	if shr.Status() != BUILDED {
 		t.Errorf("The status '%v' should '%v'. ", shr.Status(), BUILDED)
 		t.FailNow()
@@ -58,6 +59,7 @@ func TestSimpleHashRing(t *testing.T) {
 	t.Logf("The checker is started.")
 	if !shr.InChecking() {
 		t.Logf("The checker should be started.")
+		t.FailNow()
 	}
 	time.Sleep(3 * time.Second)
 	done, err = shr.StopCheck()
@@ -70,9 +72,10 @@ func TestSimpleHashRing(t *testing.T) {
 		t.FailNow()
 	}
 	if shr.InChecking() {
-		t.Logf("The checker should be stoped.")
+		t.Logf("The checker should be stopped.")
+		t.FailNow()
 	}
-	t.Logf("The checker is stoped.")
+	t.Logf("The checker is stopped.")
 	// end - test about check
 	// begin - test about get target & remove target
 	key := "chash_test"
@@ -89,11 +92,11 @@ func TestSimpleHashRing(t *testing.T) {
 	}
 	done, err = shr.RemoveTarget(target)
 	if err != nil {
-		t.Errorf("Removing target Error: %s", err)
+		t.Errorf("Removing target '%s' Error: %s", target, err)
 		t.FailNow()
 	}
 	if !done {
-		t.Errorf("Removing target is FAILING.")
+		t.Errorf("Removing target '%s' is FAILING.", target)
 		t.FailNow()
 	}
 	t.Logf("Removed target : %s", target)
@@ -115,6 +118,7 @@ func TestSimpleHashRing(t *testing.T) {
 		t.Errorf("Destroy hash ring Error: %s", err)
 		t.FailNow()
 	}
+	t.Logf("The hash ring is destroyed.")
 	if shr.Status() != DESTROYED {
 		t.Errorf("The status '%v' should '%v'. ", shr.Status(), DESTROYED)
 		t.FailNow()
