@@ -25,7 +25,7 @@ func (self *CycleChecker) Start(checkFunc CheckFunc) bool {
 		go_lib.LogWarnln("Please stop before restart.")
 		return false
 	}
-	if self.IntervalSeconds == 0 {
+	if self.IntervalSeconds <= 0 {
 		self.IntervalSeconds = 2
 	}
 	self.stopSign = make(chan bool, 1)
