@@ -157,7 +157,7 @@ func BenchmarkSimpleHashRing(b *testing.B) {
 			b.FailNow()
 		}
 		if debugTag {
-			b.Logf("Target (%v):", i, target)
+			b.Logf("The target of key '%s' is '%s'. (%d)\n", key, target, i)
 		}
 	}
 	b.StopTimer()
