@@ -123,7 +123,7 @@ func (self *SimpleHashRing) Check(nodeCheckFunc NodeCheckFunc) error {
 			go_lib.LogInfof("Removing invalid target '%s'...", target)
 			if self.removeNodeByKeys(self.nodeRing, nodeKeys) {
 				self.pendingTargetMap[target] = nodeKeys
-				self.targetMap[target] = nil
+				delete(self.targetMap, target)
 			}
 		}
 	}
@@ -133,7 +133,7 @@ func (self *SimpleHashRing) Check(nodeCheckFunc NodeCheckFunc) error {
 			validNodeKeys, done := self.addNodesOfTarget(self.nodeRing, target, nodeKeys)
 			if done {
 				self.targetMap[target] = validNodeKeys
-				self.pendingTargetMap[target] = nil
+				delete(self.pendingTargetMap, target)
 			}
 		}
 	}
@@ -230,6 +230,9 @@ func (self *SimpleHashRing) RemoveTarget(target string) (bool, error) {
 		}
 	}()
 	nodeKeys := self.targetMap[target]
+	if nodeKeys == nil {
+		nodeKeys = self.pendingTargetMap[target]
+	}
 	if nodeKeys == nil || len(nodeKeys) == 0 {
 		return false, nil
 	}
