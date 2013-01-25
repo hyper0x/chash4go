@@ -126,40 +126,56 @@ func TestSimpleHashRing(t *testing.T) {
 	// end - test about destroy
 }
 
-func BenchmarkSimpleHashRing(b *testing.B) {
-	b.StopTimer()
+func TestSimpleHashRingForBenchmark(t *testing.T) {
 	debugTag := false
-	b.Logf("Starting benchmak of hash ring...")
+	t.Logf("Starting benchmark of hash ring...")
 	servers := [...]string{"10.11.156.71:2181", "10.11.5.145:2181", "10.11.5.164:2181", "192.168.106.63:2181", "192.168.106.64:2181"}
 	shr := SimpleHashRing{}
-	b.Logf("Build hash ring...")
+	t.Logf("Build hash ring...")
 	err := shr.Build(500)
 	if err != nil {
-		b.Errorf("Build hash ring Error: %s", err)
-		b.FailNow()
+		t.Errorf("Build hash ring Error: %s", err)
+		t.FailNow()
 	}
-	b.Logf("Add servers (%v)...", servers)
+	t.Logf("Add servers (%v)...", servers)
 	for _, s := range servers {
 		_, err := shr.AddTarget(s)
 		if err != nil {
-			b.Errorf("Adding server Error: %s", err)
-			b.FailNow()
+			t.Errorf("Adding server Error: %s", err)
+			t.FailNow()
 		}
 	}
-	b.ResetTimer()
-	b.StartTimer()
-	for i := 1; i <= b.N; i++ {
-		randNumber := rand.Int63n(int64(999999999999999))
-		key := strconv.FormatInt(randNumber, 16)
-		target, err := shr.GetTarget(key)
-		if err != nil {
-			b.Errorf("Getting target Error (%v): %s", i, err)
-			b.FailNow()
+	loopNumbers := []int{10000, 20000, 50000, 100000, 200000, 300000, 400000, 500000}
+	for _, loopNumber := range loopNumbers {
+		keys := make([]string, loopNumber)
+		for i := 0; i < loopNumber; i++ {
+			key := strconv.FormatInt(rand.Int63n(int64(9999999999999999)), 16)
+			if len(key) > 10 {
+				key = key[:10]
+			}
+			keys[i] = key
 		}
-		if debugTag {
-			b.Logf("The target of key '%s' is '%s'. (%d)\n", key, target, i)
+		ns1 := time.Now().UnixNano()
+		for i := 0; i < loopNumber; i++ {
+			key := keys[i]
+			target, err := shr.GetTarget(key)
+			if err != nil {
+				t.Errorf("Getting target Error (%v): %s", i, err)
+				t.FailNow()
+			}
+			if debugTag {
+				t.Logf("The target of key '%s' is '%s'. (%d)\n", key, target, i)
+			}
+			if len(target) == 0 {
+				t.Errorf("The target of key '%s' is EMPTY!", key)
+				t.FailNow()
+			}
 		}
+		ns2 := time.Now().UnixNano()
+		totalCostNs := ns2 - ns1
+		totalCost := float64(totalCostNs) / float64(1000)
+		eachCost := float64(totalCost) / float64(loopNumber)
+		t.Logf("Benchmark Result (loopNumber=%d) - Total cost (microsecond): %f, Each cost (microsecond): %f.\n", loopNumber, totalCost, eachCost)
 	}
-	b.StopTimer()
-	b.Logf("The benchmak of hash ring is end.")
+	t.Logf("The benchmak of hash ring is end.")
 }
