@@ -252,12 +252,56 @@ func (self *SimpleHashRing) GetTarget(key string) (string, error) {
 			debug.PrintStack()
 		}
 	}()
-	nodeKey := GetHashForKey(key)
-	matchedNode := self.nodeRing.Next(nodeKey)
-	if matchedNode == nil {
+	results, err := self.GetTargets(key, 1)
+	if err != nil {
+		return "", err
+	}
+	if len(results) == 0 {
 		return "", nil
 	}
-	return matchedNode.Target, nil
+	return results[0], nil
+}
+
+func (self *SimpleHashRing) GetTargets(key string, number int) ([]string, error) {
+	self.getChangeSign().RSet()
+	defer func() {
+		self.getChangeSign().RUnset()
+		if err := recover(); err != nil {
+			errorMsg := fmt.Sprintf("Occur FATAL error when get targets of key '%s' (number=%d): %s", key, number, err)
+			go_lib.LogFatalln(errorMsg)
+			debug.PrintStack()
+		}
+	}()
+	results := make([]string, 0)
+	if len(key) == 0 {
+		return results, nil
+	}
+	if number <= 0 {
+		number = 1
+	}
+	targetNumber := len(self.targetMap)
+	if number > targetNumber {
+		number = targetNumber
+	}
+	keyHash := GetHashForKey(key)
+	currentKeyHash := keyHash
+	for len(results) < number {
+		matchedNode := self.nodeRing.Next(currentKeyHash)
+		nodeHash := matchedNode.Key
+		target := matchedNode.Target
+		contain := false
+		for _, t := range results {
+			if t == target {
+				contain = true
+				break
+			}
+		}
+		if !contain {
+			results = append(results, target)
+		}
+		currentKeyHash = nodeHash + 1
+	}
+	return results, nil
 }
 
 func (self *SimpleHashRing) addNodes(nodeRing *NodeRing, nodes ...Node) ([]uint64, bool) {
