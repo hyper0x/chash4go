@@ -56,7 +56,7 @@ func (self *SimpleHashRing) Build(shadowNumber uint16) error {
 		self.getChangeSign().Unset()
 		if err := recover(); err != nil {
 			errorMsg := fmt.Sprintf("Occur FATAL error when build hash ring: %s", err)
-			go_lib.LogFatalln(errorMsg)
+			logger.Fatalln(errorMsg)
 			debug.PrintStack()
 		}
 	}()
@@ -71,7 +71,7 @@ func (self *SimpleHashRing) Build(shadowNumber uint16) error {
 		self.status = BUILDED
 	default:
 		errorMsg := "Please destroy hash ring before rebuilding."
-		go_lib.LogErrorln(errorMsg)
+		logger.Errorln(errorMsg)
 		return errors.New(errorMsg)
 	}
 	return nil
@@ -83,7 +83,7 @@ func (self *SimpleHashRing) Destroy() error {
 		self.getChangeSign().Unset()
 		if err := recover(); err != nil {
 			errorMsg := fmt.Sprintf("Occur FATAL error when build hash ring: %s", err)
-			go_lib.LogFatalln(errorMsg)
+			logger.Fatalln(errorMsg)
 			debug.PrintStack()
 		}
 	}()
@@ -98,7 +98,7 @@ func (self *SimpleHashRing) Destroy() error {
 		self.status = DESTROYED
 	default:
 		warningMsg := "The hash ring were not builded. IGNORE the destroy operation."
-		go_lib.LogWarnln(warningMsg)
+		logger.Warnln(warningMsg)
 	}
 	return nil
 }
@@ -114,13 +114,13 @@ func (self *SimpleHashRing) Check(nodeCheckFunc NodeCheckFunc) error {
 	defer func() {
 		if err := recover(); err != nil {
 			errorMsg := fmt.Sprintf("Occur FATAL error when check node ring: %s", err)
-			go_lib.LogFatalln(errorMsg)
+			logger.Fatalln(errorMsg)
 			debug.PrintStack()
 		}
 	}()
 	for target, nodeKeys := range self.targetMap {
 		if !nodeCheckFunc(target) {
-			go_lib.LogInfof("Removing invalid target '%s'...", target)
+			logger.Infof("Removing invalid target '%s'...", target)
 			if self.removeNodeByKeys(self.nodeRing, nodeKeys) {
 				self.pendingTargetMap[target] = nodeKeys
 				delete(self.targetMap, target)
@@ -129,7 +129,7 @@ func (self *SimpleHashRing) Check(nodeCheckFunc NodeCheckFunc) error {
 	}
 	for target, nodeKeys := range self.pendingTargetMap {
 		if nodeCheckFunc(target) {
-			go_lib.LogInfof("Adding valid target '%s'...", target)
+			logger.Infof("Adding valid target '%s'...", target)
 			validNodeKeys, done := self.addNodesOfTarget(self.nodeRing, target, nodeKeys)
 			if done {
 				self.targetMap[target] = validNodeKeys
@@ -144,22 +144,22 @@ func (self *SimpleHashRing) StartCheck(nodeCheckFunc NodeCheckFunc, intervalSeco
 	defer func() {
 		if err := recover(); err != nil {
 			errorMsg := fmt.Sprintf("Occur FATAL error when start checker: %s", err)
-			go_lib.LogFatalln(errorMsg)
+			logger.Fatalln(errorMsg)
 			debug.PrintStack()
 		}
 	}()
 	if self.status != BUILDED {
-		go_lib.LogWarnln("The hash ring were not builded. IGNORE the checker startup.")
+		logger.Warnln("The hash ring were not builded. IGNORE the checker startup.")
 		return false, nil
 	}
 	checkFunc := func() {
 		err := self.Check(nodeCheckFunc)
 		if err != nil {
-			go_lib.LogErrorf("Node ring checking is FAILING: %s\n", err)
+			logger.Errorf("Node ring checking is FAILING: %s\n", err)
 		}
 	}
 	if self.checker != nil && self.checker.InChecking() {
-		go_lib.LogInfoln("Stop checker before reinitialization.")
+		logger.Infoln("Stop checker before reinitialization.")
 		self.checker.Stop()
 	}
 	self.checker = NewChecker(intervalSeconds)
@@ -171,7 +171,7 @@ func (self *SimpleHashRing) StopCheck() (bool, error) {
 	defer func() {
 		if err := recover(); err != nil {
 			errorMsg := fmt.Sprintf("Occur FATAL error when stop checker: %s", err)
-			go_lib.LogFatalln(errorMsg)
+			logger.Fatalln(errorMsg)
 			debug.PrintStack()
 		}
 	}()
@@ -193,7 +193,7 @@ func (self *SimpleHashRing) AddTarget(target string) (bool, error) {
 	defer func() {
 		if err := recover(); err != nil {
 			errorMsg := fmt.Sprintf("Occur FATAL error when add target: %s", err)
-			go_lib.LogFatalln(errorMsg)
+			logger.Fatalln(errorMsg)
 			debug.PrintStack()
 		}
 	}()
@@ -225,7 +225,7 @@ func (self *SimpleHashRing) RemoveTarget(target string) (bool, error) {
 	defer func() {
 		if err := recover(); err != nil {
 			errorMsg := fmt.Sprintf("Occur FATAL error when remove target: %s", err)
-			go_lib.LogFatalln(errorMsg)
+			logger.Fatalln(errorMsg)
 			debug.PrintStack()
 		}
 	}()
@@ -248,7 +248,7 @@ func (self *SimpleHashRing) GetTarget(key string) (string, error) {
 		self.getChangeSign().RUnset()
 		if err := recover(); err != nil {
 			errorMsg := fmt.Sprintf("Occur FATAL error when get target of key '%s': %s", key, err)
-			go_lib.LogFatalln(errorMsg)
+			logger.Fatalln(errorMsg)
 			debug.PrintStack()
 		}
 	}()
@@ -268,7 +268,7 @@ func (self *SimpleHashRing) GetTargets(key string, number int) ([]string, error)
 		self.getChangeSign().RUnset()
 		if err := recover(); err != nil {
 			errorMsg := fmt.Sprintf("Occur FATAL error when get targets of key '%s' (number=%d): %s", key, number, err)
-			go_lib.LogFatalln(errorMsg)
+			logger.Fatalln(errorMsg)
 			debug.PrintStack()
 		}
 	}()

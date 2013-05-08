@@ -1,7 +1,6 @@
 package chash4go
 
 import (
-	"go_lib"
 	"time"
 )
 
@@ -22,7 +21,7 @@ type CycleChecker struct {
 
 func (self *CycleChecker) Start(checkFunc CheckFunc) bool {
 	if self.checkingTag {
-		go_lib.LogWarnln("Please stop before restart.")
+		logger.Warnln("Please stop before restart.")
 		return false
 	}
 	if self.IntervalSeconds <= 0 {
@@ -38,7 +37,7 @@ func (self *CycleChecker) Start(checkFunc CheckFunc) bool {
 				checkFunc()
 				self.count++
 			case <-self.stopSign:
-				go_lib.LogInfof("The checker will be stop. (count=%d)", self.count)
+				logger.Infof("The checker will be stop. (count=%d)", self.count)
 				break
 			}
 		}
@@ -49,7 +48,7 @@ func (self *CycleChecker) Start(checkFunc CheckFunc) bool {
 
 func (self *CycleChecker) Stop() bool {
 	if !self.checkingTag {
-		go_lib.LogWarnln("The checker were not started.")
+		logger.Warnln("The checker were not started.")
 		return false
 	}
 	self.checkingTag = false
